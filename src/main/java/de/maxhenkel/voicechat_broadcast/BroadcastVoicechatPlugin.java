@@ -1,15 +1,17 @@
 package de.maxhenkel.voicechat_broadcast;
 
+import com.github.puregero.multilib.MultiLib;
 import de.maxhenkel.voicechat.api.*;
 import de.maxhenkel.voicechat.api.events.EventRegistration;
 import de.maxhenkel.voicechat.api.events.MicrophonePacketEvent;
+import de.maxhenkel.voicechat.api.events.SoundPacketEvent;
+import de.maxhenkel.voicechat.api.packets.SoundPacket;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
 
 public class BroadcastVoicechatPlugin implements VoicechatPlugin {
-
     /**
      * Only OPs have the broadcast permission by default
      */
@@ -82,19 +84,25 @@ public class BroadcastVoicechatPlugin implements VoicechatPlugin {
         VoicechatServerApi api = event.getVoicechat();
 
         // Iterating over every player on the server
-        for (Player onlinePlayer : Bukkit.getServer().getOnlinePlayers()) {
+        for (Player onlinePlayer : MultiLib.getAllOnlinePlayers()) {
             // Don't send the audio to the player that is broadcasting
             if (onlinePlayer.getUniqueId().equals(player.getUniqueId())) {
                 continue;
             }
-            VoicechatConnection connection = api.getConnectionOf(onlinePlayer.getUniqueId());
-            // Check if the player is actually connected to the voice chat
-            if (connection == null) {
+
+            if (MultiLib.isLocalPlayer(onlinePlayer)) {
+                VoicechatConnection connection = api.getConnectionOf(onlinePlayer.getUniqueId());
+                // Check if the player is actually connected to the voice chat
+                if (connection == null) {
+                    continue;
+                }
+
+                // Send a static audio packet of the microphone data to the connection of each player
+                api.sendStaticSoundPacketTo(connection, event.getPacket().toStaticSoundPacket());
                 continue;
             }
-            // Send a static audio packet of the microphone data to the connection of each player
-            api.sendStaticSoundPacketTo(connection, event.getPacket().toStaticSoundPacket());
+            String serverName = MultiLib.getExternalServerName(onlinePlayer);
+            api.encodeSoundPacket(serverName, onlinePlayer.getUniqueId(), event.getPacket().toStaticSoundPacket(), SoundPacketEvent.SOURCE_PLUGIN);
         }
     }
-
 }

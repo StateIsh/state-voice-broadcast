@@ -1,5 +1,18 @@
 plugins {
     id 'java'
+    id 'com.github.johnrengelman.shadow' version "${shadow_version}"
+}
+
+repositories {
+    mavenCentral()
+    // You need this maven repository if you want to use the paper dependency
+    maven {
+        url = uri("https://papermc.io/repo/repository/maven-public/")
+    }
+    maven {
+        url "https://repo.clojars.org/"
+    }
+    mavenLocal()
 }
 
 sourceCompatibility = JavaLanguageVersion.of(java_version as int)
@@ -16,8 +29,10 @@ processResources {
     }
 }
 
+
 dependencies {
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
+    shadow "com.github.puregero:multilib:1.1.12"
     // To use this dependency, you need to compile bukkit by yourself
     // See https://www.spigotmc.org/wiki/buildtools/
     // implementation "org.bukkit:craftbukkit:${bukkit_version}"
@@ -26,15 +41,10 @@ dependencies {
     implementation "de.maxhenkel.voicechat:voicechat-api:${voicechat_api_version}"
 }
 
-repositories {
-    mavenCentral()
-    maven {
-        name = "henkelmax.public"
-        url = 'https://maven.maxhenkel.de/repository/public'
-    }
-    // You need this maven repository if you want to use the paper dependency
-    maven {
-        url = uri("https://papermc.io/repo/repository/maven-public/")
-    }
-    mavenLocal()
+build.dependsOn(shadowJar)
+
+shadowJar {
+    configurations = [project.configurations.shadow]
+    archiveClassifier = ''
+    relocate "com.github.puregero.multilib", "de.maxhenkel.voicechat_broadcast.multilib"
 }
