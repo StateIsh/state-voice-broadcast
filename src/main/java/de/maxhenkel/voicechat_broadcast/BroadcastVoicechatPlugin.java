@@ -1,6 +1,7 @@
 package de.maxhenkel.voicechat_broadcast;
 
 import com.github.puregero.multilib.MultiLib;
+import com.github.puregero.multilib.MultiLibImpl;
 import de.maxhenkel.voicechat.api.*;
 import de.maxhenkel.voicechat.api.events.EventRegistration;
 import de.maxhenkel.voicechat.api.events.MicrophonePacketEvent;
@@ -11,11 +12,18 @@ import org.bukkit.entity.Player;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
 
+import java.util.UUID;
+
 public class BroadcastVoicechatPlugin implements VoicechatPlugin {
     /**
      * Only OPs have the broadcast permission by default
      */
     public static Permission BROADCAST_PERMISSION = new Permission("voicechat_broadcast.broadcast", PermissionDefault.OP);
+    private static VoicechatServerApi api;
+
+    public static VoicechatServerApi getApi() {
+        return api;
+    }
 
     /**
      * @return the unique ID for this voice chat plugin
@@ -32,7 +40,7 @@ public class BroadcastVoicechatPlugin implements VoicechatPlugin {
      */
     @Override
     public void initialize(VoicechatApi api) {
-
+        BroadcastVoicechatPlugin.api = (VoicechatServerApi) api;
     }
 
     /**
@@ -83,14 +91,19 @@ public class BroadcastVoicechatPlugin implements VoicechatPlugin {
 
         VoicechatServerApi api = event.getVoicechat();
 
+        MultiLib.notify("voicechat_broadcast:broadcast_server", api.externalEncodeSoundPacket(null, UUID.randomUUID(), event.getPacket().toStaticSoundPacket(), SoundPacketEvent.SOURCE_PLUGIN));
+
         // Iterating over every player on the server
-        for (Player onlinePlayer : MultiLib.getAllOnlinePlayers()) {
+        for (Player onlinePlayer : MultiLib.getLocalOnlinePlayers()) {
             // Don't send the audio to the player that is broadcasting
             if (onlinePlayer.getUniqueId().equals(player.getUniqueId())) {
                 continue;
             }
 
-            if (MultiLib.isLocalPlayer(onlinePlayer)) {
+            if (!MultiLib.isLocalPlayer(onlinePlayer)) {
+                continue;
+            }
+
                 VoicechatConnection connection = api.getConnectionOf(onlinePlayer.getUniqueId());
                 // Check if the player is actually connected to the voice chat
                 if (connection == null) {
@@ -99,10 +112,9 @@ public class BroadcastVoicechatPlugin implements VoicechatPlugin {
 
                 // Send a static audio packet of the microphone data to the connection of each player
                 api.sendStaticSoundPacketTo(connection, event.getPacket().toStaticSoundPacket());
-                continue;
-            }
-            String serverName = MultiLib.getExternalServerName(onlinePlayer);
-            api.encodeSoundPacket(serverName, onlinePlayer.getUniqueId(), event.getPacket().toStaticSoundPacket(), SoundPacketEvent.SOURCE_PLUGIN);
         }
+
+        //  String serverName = MultiLib.getExternalServerName(onlinePlayer);
+        //  api.encodeSoundPacket(serverName, onlinePlayer.getUniqueId(), event.getPacket().toStaticSoundPacket(), SoundPacketEvent.SOURCE_PLUGIN);
     }
 }

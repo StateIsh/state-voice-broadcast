@@ -1,8 +1,12 @@
 package de.maxhenkel.voicechat_broadcast;
 
-import de.maxhenkel.voicechat.api.BukkitVoicechatService;
+import com.github.puregero.multilib.MultiLib;
+import de.maxhenkel.voicechat.api.*;
+import de.maxhenkel.voicechat.api.events.SoundPacketEvent;
+import de.maxhenkel.voicechat.api.packets.SoundPacket;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.annotation.Nullable;
@@ -25,6 +29,25 @@ public final class VoicechatBroadcast extends JavaPlugin {
         } else {
             LOGGER.info("Failed to register voice chat broadcast plugin");
         }
+
+        MultiLib.on(this, "voicechat_broadcast:broadcast_server", (data) -> {
+            VoicechatServerApi api = BroadcastVoicechatPlugin.getApi();
+            SoundPacket packet = api.externalDecodeSoundPacket(data);
+            for (Player onlinePlayer : MultiLib.getLocalOnlinePlayers()) {
+                if (!MultiLib.isLocalPlayer(onlinePlayer)) {
+                    continue;
+                }
+
+                VoicechatConnection connection = api.getConnectionOf(onlinePlayer.getUniqueId());
+                // Check if the player is actually connected to the voice chat
+                if (connection == null) {
+                    continue;
+                }
+
+                // Send a static audio packet of the microphone data to the connection of each player
+                api.sendStaticSoundPacketTo(connection, packet.toStaticSoundPacket());
+            }
+        });
     }
 
     @Override
